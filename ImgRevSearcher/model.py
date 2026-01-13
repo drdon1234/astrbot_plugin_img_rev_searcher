@@ -194,10 +194,33 @@ class BaseSearchModel:
             network_kwargs = {}
             if self.proxies:
                 network_kwargs["proxies"] = self.proxies
-            effective_cookies = None
+            # Google引擎使用独立的requests实现，不使用Network
             if api == "google":
                 effective_cookies = await self._get_google_cookie()
-            elif api in self.default_cookies:
+                engine_params = self._prepare_engine_params(api, search_params)
+                
+                # 准备Google Lens特有的配置参数
+                google_config = {
+                    "cookies": effective_cookies,
+                    "proxies": self.proxies,
+                    "timeout": self.timeout,
+                    "auto_fetch_cookie": self.auto_google_config.get("enabled", False),
+                    "cookie_update_time": None,  # 将在引擎内部管理
+                    "cookie_expire_hours": self.auto_google_config.get("update_interval", 43200) / 3600.0 if self.auto_google_config.get("update_interval", 43200) > 0 else 24,
+                    "use_remote_browser": self.auto_google_config.get("use_remote", False),
+                    "remote_browser_url": self.auto_google_config.get("remote_addr")
+                }
+                
+                engine_instance = engine_class(**engine_params, **google_config)
+                try:
+                    response = await engine_instance.search(file=file, url=url, **search_params)
+                    return response.show_result()
+                finally:
+                    await engine_instance.close()
+            
+            # 其他引擎使用httpx Network
+            effective_cookies = None
+            if api in self.default_cookies:
                 effective_cookies = self.default_cookies.get(api)
             elif self.cookies:
                 effective_cookies = self.cookies
@@ -205,6 +228,7 @@ class BaseSearchModel:
                 network_kwargs["cookies"] = effective_cookies
             if self.timeout:
                 network_kwargs["timeout"] = self.timeout
+            
             async with Network(**network_kwargs) as client:
                 engine_params = self._prepare_engine_params(api, search_params)
                 engine_instance = engine_class(client=client, **engine_params)
