@@ -1,4 +1,6 @@
-# 适配 AstrBot 的图片反搜插件
+# 本插件已经不再维护，图片反搜插件已使用新仓库维护：https://github.com/drdon1234/astrbot_plugin_image_search
+
+# ~适配 AstrBot 的图片反搜插件~
 
 > ⚡ **核心代码基于**：[kitUIN/PicImageSearch](https://github.com/kitUIN/PicImageSearch)
 
